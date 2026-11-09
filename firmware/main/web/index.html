@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  />
+  <title>Display settings</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101214;
+      --surface: #1a1e22;
+      --ink: #f4f6f8;
+      --muted: #a6b0ba;
+      --line: #343d45;
+      --accent: #b4efca;
+      --radius: 12px;
+      --space: 16px;
+      font:
+        16px/1.5 system-ui,
+        sans-serif;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    main {
+      max-width: 640px;
+      margin: auto;
+      padding: 32px 20px 64px;
+    }
+    h1 {
+      font-size: 30px;
+      letter-spacing: -1px;
+      margin: 0;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 0 0 16px;
+    }
+    p {
+      color: var(--muted);
+      margin: 8px 0 20px;
+    }
+    .eyebrow {
+      font: 12px monospace;
+      letter-spacing: 2px;
+      color: var(--accent);
+    }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin: 20px 0;
+    }
+    label {
+      display: block;
+      margin: 14px 0 6px;
+    }
+    input:not([type="checkbox"]),
+    button {
+      width: 100%;
+      font: inherit;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+    input {
+      background: var(--bg);
+      color: var(--ink);
+    }
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 10px;
+      accent-color: var(--accent);
+    }
+    button {
+      cursor: pointer;
+      background: var(--accent);
+      color: #102018;
+      font-weight: 650;
+      margin-top: 20px;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+    .secondary {
+      background: transparent;
+      color: var(--ink);
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .mono {
+      font-family: monospace;
+    }
+    .pill {
+      font: 12px monospace;
+      color: var(--accent);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 5px 10px;
+      display: inline-block;
+      margin: 12px 0;
+    }
+    .departure {
+      border-top: 1px solid var(--line);
+      padding: 12px 0;
+    }
+    .departure strong {
+      display: block;
+    }
+    .departure span {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    #notice {
+      min-height: 24px;
+      color: var(--accent);
+    }
+    small {
+      color: var(--muted);
+    }
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+  </style>
+  <main>
+    <h1 id="name">Your display</h1>
+    <div class="pill" id="connection">Connecting to your display…</div>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <section>
+      <h2>On your display</h2>
+      <div id="departures">Loading…</div>
+      <button class="secondary" id="next">Next slide</button>
+    </section>
+    <section>
+      <h2>Display settings</h2>
+      <form id="settings">
+        <label for="duration">Seconds per slide</label
+        ><input
+          id="duration"
+          type="number"
+          min="5"
+          max="60"
+          value="5"
+          required
+        />
+        <label for="brightness">Brightness</label
+        ><input id="brightness" type="range" min="0" max="255" value="96" />
+        <label class="row"
+          ><input id="night" type="checkbox" checked />Dim between 23:00 and
+          07:00</label
+        >
+        <label>Slides</label>
+        <div id="features"></div>
+        <button type="submit">Save display settings</button>
+      </form>
+    </section>
+    <section>
+      <h2>Wi-Fi connection</h2>
+      <p>
+        Connect directly to your home Wi-Fi. Use a 2.4 GHz network with a
+        password, or an open network without a sign-in page.
+      </p>
+      <form id="wifi">
+        <label for="ssid">Network name</label
+        ><input id="ssid" maxlength="32" autocomplete="off" required />
+        <label for="password">Wi-Fi password</label
+        ><input
+          id="password"
+          type="password"
+          maxlength="63"
+          autocomplete="new-password"
+        />
+        <small
+          >Leave empty only for an open network. Your saved password is never
+          shown here.</small
+        >
+        <button type="submit">Connect to Wi-Fi</button>
+      </form>
+    </section>
+    <small
+      >Departures are marked live or scheduled. Scheduled times come from the
+      timetable.</small
+    >
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    async function api(path, method = "GET", body) {
+      const r = await fetch("/api/v1/" + path, {
+        method,
+        headers:
+          body === undefined ? {} : { "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      const data = await r.json();
+      if (!r.ok) throw Error(data.message || "Request failed");
+      return data;
+    }
+    function notice(text) {
+      $("notice").textContent = text;
+    }
+    const states = {
+      offline: "Wi-Fi offline",
+      clock_sync: "Synchronizing clock",
+      unavailable: "Feed unavailable",
+      stale: "Data is stale",
+      waiting_for_live: "Waiting for a live vehicle update",
+    };
+    async function refresh() {
+      try {
+        const [status, data] = await Promise.all([
+          api("status"),
+          api("departures"),
+        ]);
+        $("name").textContent = status.name;
+        document.title = status.name;
+        $("connection").textContent = status.online
+          ? "Connected · " + status.ip
+          : "Wi-Fi setup";
+        $("departures").replaceChildren();
+        for (const item of data.departures) {
+          const row = document.createElement("div");
+          row.className = "departure";
+          const heading = document.createElement("strong");
+          heading.textContent = item.direction;
+          const detail = document.createElement("span");
+          detail.textContent =
+            item.state === "live"
+              ? item.minutes +
+                " min · live" +
+                (item.delay_minutes > 0
+                  ? " · " + item.delay_minutes + " min late"
+                  : "")
+              : item.state === "scheduled"
+                ? item.minutes + " min · scheduled"
+                : states[item.state] || item.state;
+          row.append(heading, detail);
+          $("departures").append(row);
+        }
+      } catch (e) {
+        $("connection").textContent = "Display not reachable";
+      }
+    }
+    async function load() {
+      try {
+        const [config, list] = await Promise.all([
+          api("settings"),
+          api("features"),
+        ]);
+        $("duration").value = config.slide_seconds;
+        $("brightness").value = config.brightness;
+        $("night").checked = config.night_dim;
+        for (const f of list.features) {
+          const label = document.createElement("label");
+          label.className = "row";
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.value = f.id;
+          input.checked = config.enabled.includes(f.id);
+          label.append(input, document.createTextNode(f.label));
+          $("features").append(label);
+        }
+        await refresh();
+      } catch (e) {
+        notice(e.message);
+      }
+    }
+    $("settings").onsubmit = async (e) => {
+      e.preventDefault();
+      const button = e.submitter;
+      button.disabled = true;
+      try {
+        await api("settings", "PATCH", {
+          slide_seconds: Number($("duration").value),
+          brightness: Number($("brightness").value),
+          night_dim: $("night").checked,
+          enabled: [...$("features").querySelectorAll("input:checked")].map(
+            (x) => x.value,
+          ),
+        });
+        notice("Display settings saved.");
+      } catch (err) {
+        notice(err.message);
+      } finally {
+        button.disabled = false;
+      }
+    };
+    $("wifi").onsubmit = async (e) => {
+      e.preventDefault();
+      const button = e.submitter;
+      button.disabled = true;
+      try {
+        await api("wifi", "PUT", {
+          ssid: $("ssid").value,
+          password: $("password").value,
+        });
+        $("password").value = "";
+        notice(
+          "Connecting. Rejoin your home Wi-Fi, then find rocket-glance in your router’s connected devices and open its address. If connection fails, setup returns on the display.",
+        );
+      } catch (err) {
+        notice(err.message);
+      } finally {
+        button.disabled = false;
+      }
+    };
+    $("next").onclick = async () => {
+      try {
+        await api("actions/next", "POST", {});
+      } catch (e) {
+        notice(e.message);
+      }
+    };
+    load();
+    setInterval(refresh, 15000);
+  </script>
+</html>

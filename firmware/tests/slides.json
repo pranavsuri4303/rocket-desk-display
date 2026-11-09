@@ -1,0 +1,9 @@
+{
+  "slide_seconds": 5,
+  "slides": [
+    {"type": "bus", "id": "bus-9-enschede", "stop_code": "43005710", "line": "9", "stop": "Kennispark/UT", "direction": "Enschede CS"},
+    {"type": "bus", "id": "bus-9-hengelo", "stop_code": "43110060", "line": "9", "stop": "Kennispark/UT", "direction": "Hengelo CS"},
+    {"type": "bus", "id": "bus-1-wesselerbrink", "stop_code": "43110270", "line": "1", "stop": "UT/Langenkampweg", "direction": "Wesselerbrink"},
+    {"type": "clock"}
+  ]
+}
